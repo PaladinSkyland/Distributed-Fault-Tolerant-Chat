@@ -1,6 +1,8 @@
 import socket
 import json
 import threading
+import time
+import random
 
 class Node:
     def __init__(self, node_id : str, recipient_address ):
@@ -8,6 +10,9 @@ class Node:
         
         self.vector_clock = {self.node_id: 0}
         self.buffered_messages = []
+
+        self.private_history_messages = []
+        self.broadcast_history_messages = []
 
         self.recipient_address = recipient_address
 
@@ -44,12 +49,13 @@ class Node:
                 return False
         return True
     
-    def process_message(self, sender_id, message):
-        print(f"Node {self.node_id} processed message from {sender_id}: {message}")
+    def process_message(self, sender_id, message, sender_vc):
+        print(f"Node {self.node_id} processed message from {sender_id}: {message}, vc: {sender_vc}")
     
-    def receive_message_from_socket(self, socket):
+    def receive_message(self):
         while True:
-            data, addr = socket.recvfrom(4096)
+            self.random_sleep()
+            data, addr = self.sock.recvfrom(4096)
             payload = json.loads(data.decode('utf-8'))
             
             sender_id = payload['sender_id']
@@ -60,7 +66,7 @@ class Node:
                 self.vector_clock[sender_id] = 0
             
             if self.can_deliver(sender_id, sender_vc):
-                self.process_message(sender_id, message)
+                self.process_message(sender_id, message, sender_vc)
                 self.update_vector_clock(sender_vc)
                 self.deliver_buffered_messages()
             else:
@@ -72,21 +78,19 @@ class Node:
             sender_id = message['sender_id']
             sender_vc = message['vector_clock']
             if self.can_deliver(sender_id, sender_vc):
-                self.process_message(sender_id, message['message'])
+                self.process_message(sender_id, message['message'], sender_vc)
                 self.update_vector_clock(sender_vc)
                 messages_to_remove.append(message)
         for message in messages_to_remove:
             self.buffered_messages.remove(message)
-    
-    #def start(self):
-    #    private_thread = threading.Thread(target=self.receive_message_from_socket, args=(self.private_socket,))
-    #    broadcast_thread = threading.Thread(target=self.receive_message_from_socket, args=(self.broadcast_socket,))
-    #    private_thread.start()
-    #    broadcast_thread.start()
 
+    def random_sleep(self):
+        time.sleep(random.uniform(0.1, 2))
+    
     def start(self):
         print(f"Node {self.node_id} started listening on {self.recipient_address}")
-        self.receive_message_from_socket(self.sock)
+        thread = threading.Thread(target=self.receive_message)
+        thread.start()
 
     def __del__(self):
         self.sock.close()

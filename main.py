@@ -15,12 +15,9 @@ if __name__ == '__main__':
     node3 = Node('node3', adresses['node3'])
 
     # Start nodes
-    node1_thread = threading.Thread(target=node1.start)
-    node2_thread = threading.Thread(target=node2.start)
-    node3_thread = threading.Thread(target=node3.start)
-    node1_thread.start()
-    node2_thread.start()
-    node3_thread.start()
+    node1.start()
+    node2.start()
+    node3.start()
 
     # Simulate sending broadcast messages
     node1.send_message(adresses['broadcast_recipient_address'], "Hello from Node 1")
