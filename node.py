@@ -5,16 +5,14 @@ import time
 import random
 
 class Node:
-    def __init__(self, node_id : str, recipient_address ):
+    def __init__(self, node_id : str, recipient_address , random_delay = (0.1, 2)):
         self.node_id = node_id
         
         self.vector_clock = {self.node_id: 0}
         self.buffered_messages = []
 
-        self.private_history_messages = []
-        self.broadcast_history_messages = []
-
         self.recipient_address = recipient_address
+        self.random_delay = random_delay
 
         # Socket 
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -49,8 +47,8 @@ class Node:
                 return False
         return True
     
-    def process_message(self, sender_id, message, sender_vc):
-        print(f"Node {self.node_id} processed message from {sender_id}: {message}, vc: {sender_vc}")
+    def process_message(self, sender_id, message):
+        print(f"{self.node_id} : message from {sender_id}: {message}, vc: {self.vector_clock}")
     
     def receive_message(self):
         while True:
@@ -66,7 +64,7 @@ class Node:
                 self.vector_clock[sender_id] = 0
             
             if self.can_deliver(sender_id, sender_vc):
-                self.process_message(sender_id, message, sender_vc)
+                self.process_message(sender_id, message)
                 self.update_vector_clock(sender_vc)
                 self.deliver_buffered_messages()
             else:
@@ -78,14 +76,14 @@ class Node:
             sender_id = message['sender_id']
             sender_vc = message['vector_clock']
             if self.can_deliver(sender_id, sender_vc):
-                self.process_message(sender_id, message['message'], sender_vc)
+                self.process_message(sender_id, message['message'])
                 self.update_vector_clock(sender_vc)
                 messages_to_remove.append(message)
         for message in messages_to_remove:
             self.buffered_messages.remove(message)
 
     def random_sleep(self):
-        time.sleep(random.uniform(0.1, 2))
+        time.sleep(random.uniform(*self.random_delay))
     
     def start(self):
         print(f"Node {self.node_id} started listening on {self.recipient_address}")
